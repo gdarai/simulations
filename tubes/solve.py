@@ -11,8 +11,12 @@ import csv
 
 SETTING = 'setting.json'
 EMPTY = ' '
+debug = 10
 ########
 # Functions
+
+def printDebug(lvl, data):
+	if(debug > lvl): print(data)
 
 # calc 1 tube size
 def calcSize(tubes):
@@ -31,6 +35,31 @@ def getColors(colors):
 	for idx, key in enumerate(keys):
 		colMap[key] = idx + 1
 	return colMap;
+
+# init the tubes state
+def initTubesState(tubes, state):
+	maxSize = state['size']
+	state['tubes'] = [None] * len(tubes)
+	colMap = state['colors']
+	multip = colMap['size']
+	for idx, tubeStr in enumerate(tubes):
+		free = maxSize
+		tubeSplit = [m.group(0) for m in re.finditer(r"(\d)\1*", tubeStr)]
+		state['tubes'][idx] = dict()
+		tube = state['tubes'][idx]
+		tube['items'] = []
+		for oneTS in tubeSplit:
+			free = free - len(oneTS)
+			tube['items'].append([colMap[oneTS[0]], len(oneTS)])
+		tube['free'] = free
+
+def initState(source, state):
+	state['size'] = source['size']
+	if(state['size'] == -1):
+		state['size'] = calcSize(source['tubes'])
+
+	state['colors'] = getColors(source['colors'])
+	initTubesState(source['tubes'], state)
 
 # init the state string
 def stringState(tubes, size):
@@ -56,6 +85,10 @@ def setNumState(stringState, state):
 #		state['tubes'][idx] = val
 
 # check the state if solved
+def checkState(state):
+	for tube in state['tubes']:
+		if(len(tube['items']) > 1): return false
+	return true
 
 ########
 # Settings file
@@ -66,16 +99,12 @@ print('\n-----------------\n-- SOLVE TUBES --\n-----------------\n')
 print('\nReading input file --> '+SETTING)
 
 source = json.load(open(SETTING))
-
-print(source)
+printDebug(1, source)
 
 # Init
 state = dict();
-state['size'] = source['size']
-if(state['size'] == -1):
-	state['size'] = calcSize(source['tubes'])
+initState(source, state)
+printDebug(1, state)
 
-state['colors'] = getColors(source['colors'])
-setNumState(stringState(source['tubes'], state['size']), state)
-
-print(state)
+while(checkState(state) == true):
+	return 'ok'
