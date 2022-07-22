@@ -11,7 +11,10 @@ import csv
 
 SETTING = 'setting.json'
 EMPTY = ' '
-debug = 10
+EMPTY_NUM = 0
+debug = 2
+state = dict();
+
 ########
 # Functions
 
@@ -31,64 +34,61 @@ def getColors(colors):
 	keys.sort()
 	colMap = dict();
 	colMap['size'] = len(keys) + 1;
-	colMap[EMPTY] = 0
+	colMap[EMPTY] = EMPTY_NUM
 	for idx, key in enumerate(keys):
 		colMap[key] = idx + 1
 	return colMap;
 
-# init the tubes state
-def initTubesState(tubes, state):
-	maxSize = state['size']
-	state['tubes'] = [None] * len(tubes)
-	colMap = state['colors']
-	multip = colMap['size']
-	for idx, tubeStr in enumerate(tubes):
-		free = maxSize
-		tubeSplit = [m.group(0) for m in re.finditer(r"(\d)\1*", tubeStr)]
-		state['tubes'][idx] = dict()
-		tube = state['tubes'][idx]
-		tube['items'] = []
-		for oneTS in tubeSplit:
-			free = free - len(oneTS)
-			tube['items'].append([colMap[oneTS[0]], len(oneTS)])
-		tube['free'] = free
+# init the state string
+def stringStateFromInit(tubes):
+	size = state['size']
+	out = ''
+	for tube in tubes:
+		out = out + tube
+		if(len(tube) < len(out)):
+			out = out + EMPTY*(size - len(tube))
+	printDebug(2, out)
+	return out
 
-def initState(source, state):
+def setArrStateLambda(liq):
+	return [state['colors'][liq[0]],len(liq)]
+
+# init the state string
+def setArrState(stringState):
+	x = state['size']
+	strTubes =[stringState[y-x:y] for y in range(x, len(stringState)+x,x)]
+	for idx, tube in enumerate(strTubes):
+		tubeSplit = [m.group(0) for m in re.finditer(r"(.)\1*", tube)]
+		state['tubes'][idx] = list(map(setArrStateLambda, tubeSplit));
+		printDebug(3, state)
+
+# cinit the state object
+def initState(source):
 	state['size'] = source['size']
 	if(state['size'] == -1):
 		state['size'] = calcSize(source['tubes'])
 
 	state['colors'] = getColors(source['colors'])
-	initTubesState(source['tubes'], state)
-
-# init the state string
-def stringState(tubes, size):
-	state = ''
-	for tube in tubes:
-		state = state + tube
-		if(len(tube) < size):
-			state = state + EMPTY*(size - len(tube))
-	return state
-
-# init the state string
-def setNumState(stringState, state):
-	state['tubes'] = []
-	x = state['size']
-	strTubes =[stringState[y-x:y] for y in range(x, len(stringState)+x,x)]
-	colMap = state['colors']
-	multip = colMap['size']
-	for idx, tube in enumerate(strTubes):
-		val = 0
-		for ch in tube:
-			val = ((val) * multip ) + colMap[ch]
-		print(val)
-#		state['tubes'][idx] = val
+	state['tubes'] = [None] * len(source['tubes'])
+	initState = stringStateFromInit(source['tubes'])
+	state['toCheck'] = [[initState, '']]
+	state['known'] = set()
+	state['known'].add(initState)
+	state['from'] = list(range(0,len(state['tubes'])))
+	state['to'] = list(range(0,len(state['tubes'])))
 
 # check the state if solved
-def checkState(state):
+def checkState():
 	for tube in state['tubes']:
-		if(len(tube['items']) > 1): return false
-	return true
+		if(len(tube) == 1): continue
+		if((len(tube) == 2) & (tube[1][0] == EMPTY_NUM)): continue
+		return False
+	return True
+
+# make map of possible changes
+def randomChangeMap():
+	random.shuffle(state['from'])
+	random.shuffle(state['to'])
 
 ########
 # Settings file
@@ -102,9 +102,27 @@ source = json.load(open(SETTING))
 printDebug(1, source)
 
 # Init
-state = dict();
-initState(source, state)
+initState(source)
 printDebug(1, state)
+checking = state['toCheck'].pop(0)
+setArrState(checking[0])
+printDebug(1, state)
+printDebug(2, 'Check: '+str(checkState()))
+randomChangeMap()
 
-while(checkState(state) == true):
-	return 'ok'
+for i in state['from']:
+	iOrig = copy.deepcopy(state['tubes'][i])
+	for j in state['to']:
+		if(i == j): continue
+		jOrig = copy.deepcopy(state['tubes'][j])
+		if(tweakArrState(i, j) == True):
+			if(checkState()): #WIN
+				print('Winner')
+				quit()
+			print('NotWinner')
+			#ADD to toCheck
+		state['tubes'][j] = jOrig
+	state['tubes'][i] = iOrig
+
+
+quit()
