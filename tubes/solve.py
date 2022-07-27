@@ -12,14 +12,16 @@ import csv
 SETTING = 'setting.json'
 EMPTY = ' '
 EMPTY_NUM = 0
-debug = 1
+debug = 0
 state = dict();
 
 ########
 # Functions
 
-def printDebug(lvl, data):
-	if(debug >= lvl): print(data)
+def printDebug(lvl, desc, data=None):
+	if(debug >= lvl):
+		if(data != None): print(desc+' '+str(data))
+		else: print(desc)
 
 # calc 1 tube size
 def calcSize(tubes):
@@ -57,7 +59,9 @@ def stringState():
 	colMap = state['colorsInv']
 	out = ''
 	for tube in state['tubes']:
+		printDebug(3, "tube", tube)
 		for fill in tube[1]:
+			printDebug(3, "fill", fill)
 			out = out + colMap[fill[0]]*fill[1]
 		out = out + EMPTY*tube[0]
 	printDebug(2, out)
@@ -85,6 +89,7 @@ def setArrState(stringState):
 
 # cinit the state object
 def initState(source):
+	state['bulk'] = source['bulk']
 	state['size'] = source['size']
 	if(state['size'] == -1):
 		state['size'] = calcSize(source['tubes'])
@@ -93,7 +98,7 @@ def initState(source):
 	state['colorsInv'] = {v: k for k, v in state['colors'].items()}
 	state['tubes'] = [None] * len(source['tubes'])
 	initState = stringStateFromInit(source['tubes'])
-	state['toCheck'] = [[initState, '']]
+	state['toCheck'] = [['', initState]]
 	state['known'] = set()
 	state['known'].add(initState)
 	state['from'] = list(range(0,len(state['tubes'])))
@@ -102,8 +107,8 @@ def initState(source):
 # check the state if solved
 def checkState():
 	for tube in state['tubes']:
-		if(len(tube) == 1): continue
-		if((len(tube) == 2) & (tube[1][0] == EMPTY_NUM)): continue
+		if(tube[0] == state['size']): continue
+		if(len(tube[1]) == 1): continue
 		return False
 	return True
 
@@ -127,7 +132,7 @@ def tweakStateAdd(toAdd, idx):
 	if(tube[0] < toAdd[1]): return False
 	tube[0] = tube[0] - toAdd[1]
 	if(len(tube[1]) == 0):
-		tube[1] = toAdd
+		tube[1] = [toAdd]
 		return True
 	lastFill = tube[1][-1]
 	if(lastFill[0] == toAdd[0]):
@@ -135,6 +140,19 @@ def tweakStateAdd(toAdd, idx):
 		return True
 	tube[1].append(toAdd)
 	return True
+
+# get solution path
+def getPath(prev, i, j):
+	return prev+'-'+str(i)+','+str(j)
+
+# add new state to check
+def addToCheck(prev, i, j):
+	stateStr = stringState()
+	if(stateStr in state['known']): return
+
+	path = getPath(prev, i, j)
+	state['toCheck'].append([path, stateStr])
+	state['known'].add(stateStr)
 
 ########
 # Settings file
@@ -149,29 +167,28 @@ printDebug(1, source)
 
 # Init
 initState(source)
-printDebug(1, state)
-checking = state['toCheck'].pop(0)
-setArrState(checking[0])
-printDebug(1, state)
-printDebug(2, 'Check: '+str(checkState()))
-randomChangeMap()
+printDebug(1, "Initial State", state)
+round = 0;
+while True:
+	round += 1
+	checking = state['toCheck'].pop(0)
+	printDebug(0, 'ROUND', round)
+	printDebug(0, 'checking', checking)
+	setArrState(checking[1])
+	printDebug(1, state)
+	randomChangeMap()
 
-for i in state['from']:
-	iOrig = copy.deepcopy(state['tubes'][i])
-	toAdd = tweakStateRemove(i)
-	if(toAdd == False): continue
-	for j in state['to']:
-		if(i == j): continue
-		jOrig = copy.deepcopy(state['tubes'][j])
-		if(tweakStateAdd(toAdd, j) == False): continue
-		if(checkState()): #WIN
-			print('Winner')
-			quit()
-		print('NotWinner')
-		stringState()
-		#ADD to toCheck
-		state['tubes'][j] = jOrig
-	state['tubes'][i] = iOrig
-
-
-quit()
+	for i in state['from']:
+		iOrig = copy.deepcopy(state['tubes'][i])
+		toAdd = tweakStateRemove(i)
+		if(toAdd == False): continue
+		for j in state['to']:
+			if(i == j): continue
+			jOrig = copy.deepcopy(state['tubes'][j])
+			if(tweakStateAdd(toAdd, j) == False): continue
+			if(checkState() == True): #WIN
+				printDebug(0, 'WINNER', stringState()+getPath(checking[0], i, j))
+				quit()
+			addToCheck(checking[0], i, j)
+			state['tubes'][j] = jOrig
+		state['tubes'][i] = iOrig
