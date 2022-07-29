@@ -60,6 +60,7 @@ def stringStateFromInit(tubes):
 def stringState():
 	size = state['size']
 	colMap = state['colorsInv']
+	printDebug(2, colMap)
 	out = ''
 	for tube in state['tubes']:
 		printDebug(3, "tube", tube)
@@ -106,6 +107,22 @@ def initState(source):
 	state['known'].add(initState)
 	state['from'] = list(range(0,len(state['tubes'])))
 	state['to'] = list(range(0,len(state['tubes'])))
+	state['round'] = 0
+
+# cinit the state object from dump
+def initStateFromDump(dump):
+	state['bulk'] = dump['bulk']
+	state['size'] = dump['size']
+	state['colors'] = dump['colors']
+	state['colorsInv'] = dict()
+	for key in dump['colorsInv']:
+		state['colorsInv'][int(key)] = dump['colorsInv'][key]
+	state['tubes'] = dump['tubes']
+	state['toCheck'] = dump['toCheck']
+	state['known'] = set(dump['known'])
+	state['from'] = dump['from']
+	state['to'] = dump['to']
+	state['round'] = dump['round']
 
 # check the state if solved
 def checkState():
@@ -161,23 +178,29 @@ def addToCheck(prev, i, j):
 # Dump
 def storeDump():
 	state['known'] = list(state['known'])
+	state['round'] = state['round'] + state['bulk']
 	f = open(DUMP, "w")
-	f.write(json.dumps(state))
+	f.write(json.dumps(state, indent=4, sort_keys=True))
 	f.close()
 
 ########
 # Settings file
+haveDump = os.path.isfile(DUMP)
 if(len(sys.argv) > 1):
 	SETTING = sys.argv[1]
-
+	haveDump = False
 print('\n-----------------\n-- SOLVE TUBES --\n-----------------\n')
-print('\nReading input file --> '+SETTING)
+if(haveDump):
+	print('\nReading DUMP file --> '+DUMP)
+	dump = json.load(open(DUMP))
+	printDebug(1, DUMP)
+	initStateFromDump(dump)
+else:
+	print('\nReading INPUT file --> '+SETTING)
+	source = json.load(open(SETTING))
+	printDebug(1, source)
+	initState(source)
 
-source = json.load(open(SETTING))
-printDebug(1, source)
-
-# Init
-initState(source)
 printDebug(1, "Initial State", state)
 round = 0;
 while round < state['bulk']:
