@@ -200,8 +200,10 @@ def storeDump():
 
 def storeSolution(solution):
 	store = dict()
+	store['size'] = state['size']
 	store['rowSize'] = state['rowSize']
 	store['colNames'] = state['colNames']
+	store['colors'] = state['colors']
 	store['initial'] = state['initial']
 	store['final'] = solution[1]
 	store['steps'] = solution[0].split(STEP)[1:]
