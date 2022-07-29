@@ -1,5 +1,5 @@
 {
-  "bulk": 1000,
+  "bulk": 10000,
   "colors": {
     "1":"Light Blue",
     "3":"Light Green",

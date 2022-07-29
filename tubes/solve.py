@@ -157,6 +157,7 @@ def tweakStateRemove(idx):
 	tube = state['tubes'][idx]
 	if(tube[0] == state['size']): return False
 	out = tube[1][-1]
+	if(out[1] == state['size']): return False
 	tube[1] = tube[1][0:-1]
 	tube[0] = tube[0] + out[1]
 	return out
@@ -165,6 +166,7 @@ def tweakStateRemove(idx):
 def tweakStateAdd(toAdd, idx):
 	tube = state['tubes'][idx]
 	if(tube[0] < toAdd[1]): return False
+	oldT0 = tube[0]
 	tube[0] = tube[0] - toAdd[1]
 	if(len(tube[1]) == 0):
 		tube[1] = [toAdd]
@@ -173,8 +175,8 @@ def tweakStateAdd(toAdd, idx):
 	if(lastFill[0] == toAdd[0]):
 		lastFill[1] = lastFill[1] + toAdd[1]
 		return True
-	tube[1].append(toAdd)
-	return True
+	tube[0] = oldT0
+	return False
 
 # get solution path
 def getPath(prev, i, j):
