@@ -11,7 +11,11 @@ import csv
 
 SETTING = 'setting.json'
 DUMP = 'dump.json'
+SOLUTION = 'solved.json'
 EMPTY = ' '
+ROOT = 'X'
+STEP = '-'
+SEPARATOR = ', '
 EMPTY_NUM = 0
 debug = 0
 state = dict();
@@ -19,7 +23,7 @@ state = dict();
 ########
 # Functions
 def printf(format, *args):
-    sys.stdout.write(format % args)
+	sys.stdout.write(format % args)
 
 def printDebug(lvl, desc, data=None):
 	if(debug >= lvl):
@@ -102,12 +106,18 @@ def initState(source):
 	state['colorsInv'] = {v: k for k, v in state['colors'].items()}
 	state['tubes'] = [None] * len(source['tubes'])
 	initState = stringStateFromInit(source['tubes'])
-	state['toCheck'] = [['', initState]]
+	state['toCheck'] = [[ROOT, initState]]
 	state['known'] = set()
 	state['known'].add(initState)
 	state['from'] = list(range(0,len(state['tubes'])))
 	state['to'] = list(range(0,len(state['tubes'])))
 	state['round'] = 0
+	state['roots'] = 0
+	state['solved'] = 0
+	state['rowSize'] = source['rowSize']
+	state['colNames'] = source['colors']
+	state['solution'] = []
+	state['initial'] = source['tubes']
 
 # cinit the state object from dump
 def initStateFromDump(dump):
@@ -123,6 +133,11 @@ def initStateFromDump(dump):
 	state['from'] = dump['from']
 	state['to'] = dump['to']
 	state['round'] = dump['round']
+	state['roots'] = dump['roots']
+	state['solved'] = dump['solved']
+	state['rowSize'] = dump['rowSize']
+	state['colNames'] = dump['colNames']
+	state['initial'] = dump['initial']
 
 # check the state if solved
 def checkState():
@@ -163,7 +178,7 @@ def tweakStateAdd(toAdd, idx):
 
 # get solution path
 def getPath(prev, i, j):
-	return prev+'-'+str(i)+','+str(j)
+	return prev+STEP+str(i)+SEPARATOR+str(j)
 
 # add new state to check
 def addToCheck(prev, i, j):
@@ -181,6 +196,18 @@ def storeDump():
 	state['round'] = state['round'] + 1
 	f = open(DUMP, "w")
 	f.write(json.dumps(state, indent=4, sort_keys=True))
+	f.close()
+
+def storeSolution(solution):
+	store = dict()
+	store['rowSize'] = state['rowSize']
+	store['colNames'] = state['colNames']
+	store['initial'] = state['initial']
+	store['final'] = solution[1]
+	store['steps'] = solution[0].split(STEP)[1:]
+	store['separator'] = SEPARATOR
+	f = open(SOLUTION, "w")
+	f.write(json.dumps(store, indent=4, sort_keys=True))
 	f.close()
 
 ########
@@ -205,12 +232,15 @@ printDebug(1, "Initial State", state)
 round = 0;
 while round < state['bulk']:
 	round += 1
-	checking = state['toCheck'].pop(0)
+	checking = state['toCheck'].pop()
 	printf('PROGRESS %.1f', (round/state['bulk'])*100)
 	print(' %')
 	printDebug(1, 'checking', checking)
 	setArrState(checking[1])
 	printDebug(1, state)
+	if(checking[0].count(STEP) == 1):
+		state['solved'] += 1
+
 	randomChangeMap()
 
 	for i in state['from']:
@@ -221,15 +251,24 @@ while round < state['bulk']:
 			if(i == j): continue
 			jOrig = copy.deepcopy(state['tubes'][j])
 			if(tweakStateAdd(toAdd, j) == False): continue
-			if(checkState() == True): #WIN
-				printDebug(0, 'WINNER', stringState()+getPath(checking[0], i, j))
+			if(checkState() == True):
+				solution = [getPath(checking[0], i, j), stringState()]
+				printDebug(0, 'WINNER', solution[1]+' '+solution[0])
 				printf('BULK ITTERATION %d (by %d)\n', state['round']+1, state['bulk'])
+				printf('SOLVED in %d STEPS\n', checking[0].count(STEP))
+				storeSolution(solution)
 				quit()
 			addToCheck(checking[0], i, j)
 			state['tubes'][j] = jOrig
 		state['tubes'][i] = iOrig
+
+	if(checking[0].count(STEP) == 0):
+		state['roots'] = len(state['toCheck'])
+		state['solved'] = 0
+
 printDebug(0, 'BULK FINISHED', state['bulk'])
 printf('BULK ITTERATION %d\n', state['round']+1)
+printf('SOLVED %d of %d\n', state['solved'], state['roots'])
 printDebug(0, 'KNOWN', len(state['known']))
 printDebug(0, 'TO CHECK', len(state['toCheck']))
 storeDump()
