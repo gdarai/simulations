@@ -178,7 +178,7 @@ def addToCheck(prev, i, j):
 # Dump
 def storeDump():
 	state['known'] = list(state['known'])
-	state['round'] = state['round'] + state['bulk']
+	state['round'] = state['round'] + 1
 	f = open(DUMP, "w")
 	f.write(json.dumps(state, indent=4, sort_keys=True))
 	f.close()
@@ -223,9 +223,13 @@ while round < state['bulk']:
 			if(tweakStateAdd(toAdd, j) == False): continue
 			if(checkState() == True): #WIN
 				printDebug(0, 'WINNER', stringState()+getPath(checking[0], i, j))
+				printf('BULK ITTERATION %d (by %d)\n', state['round']+1, state['bulk'])
 				quit()
 			addToCheck(checking[0], i, j)
 			state['tubes'][j] = jOrig
 		state['tubes'][i] = iOrig
-printDebug(0, 'BULK FINISHED')
+printDebug(0, 'BULK FINISHED', state['bulk'])
+printf('BULK ITTERATION %d\n', state['round']+1)
+printDebug(0, 'KNOWN', len(state['known']))
+printDebug(0, 'TO CHECK', len(state['toCheck']))
 storeDump()
