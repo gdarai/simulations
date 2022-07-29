@@ -10,6 +10,7 @@ import numpy as np
 import csv
 
 SETTING = 'setting.json'
+DUMP = 'dump.json'
 EMPTY = ' '
 EMPTY_NUM = 0
 debug = 0
@@ -17,6 +18,8 @@ state = dict();
 
 ########
 # Functions
+def printf(format, *args):
+    sys.stdout.write(format % args)
 
 def printDebug(lvl, desc, data=None):
 	if(debug >= lvl):
@@ -155,6 +158,14 @@ def addToCheck(prev, i, j):
 	state['known'].add(stateStr)
 
 ########
+# Dump
+def storeDump():
+	state['known'] = list(state['known'])
+	f = open(DUMP, "w")
+	f.write(json.dumps(state))
+	f.close()
+
+########
 # Settings file
 if(len(sys.argv) > 1):
 	SETTING = sys.argv[1]
@@ -169,11 +180,12 @@ printDebug(1, source)
 initState(source)
 printDebug(1, "Initial State", state)
 round = 0;
-while True:
+while round < state['bulk']:
 	round += 1
 	checking = state['toCheck'].pop(0)
-	printDebug(0, 'ROUND', round)
-	printDebug(0, 'checking', checking)
+	printf('PROGRESS %.1f', (round/state['bulk'])*100)
+	print(' %')
+	printDebug(1, 'checking', checking)
 	setArrState(checking[1])
 	printDebug(1, state)
 	randomChangeMap()
@@ -192,3 +204,5 @@ while True:
 			addToCheck(checking[0], i, j)
 			state['tubes'][j] = jOrig
 		state['tubes'][i] = iOrig
+printDebug(0, 'BULK FINISHED')
+storeDump()
