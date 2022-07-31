@@ -61,19 +61,23 @@ def stringStateFromInit(tubes):
 	return out
 
 # get current state string
-def stringState():
+def stringState(sort = False):
 	size = state['size']
 	colMap = state['colorsInv']
 	printDebug(2, colMap)
-	out = ''
+	out = []
 	for tube in state['tubes']:
 		printDebug(3, "tube", tube)
+		outOne = ''
 		for fill in tube[1]:
 			printDebug(3, "fill", fill)
-			out = out + colMap[fill[0]]*fill[1]
-		out = out + EMPTY*tube[0]
+			outOne = outOne + colMap[fill[0]]*fill[1]
+		outOne = outOne + EMPTY*tube[0]
+		out.append(outOne)
 	printDebug(2, out)
-	return out
+	if(sort == True): out.sort()
+	outStr = ''.join(out)
+	return outStr
 
 def setArrStateLambda(liq):
 	return [state['colors'][liq[0]],len(liq)]
@@ -184,12 +188,13 @@ def getPath(prev, i, j):
 
 # add new state to check
 def addToCheck(prev, i, j):
+	stateMark = stringState(True)
+	if(stateMark in state['known']): return
 	stateStr = stringState()
-	if(stateStr in state['known']): return
 
 	path = getPath(prev, i, j)
 	state['toCheck'].append([path, stateStr])
-	state['known'].add(stateStr)
+	state['known'].add(stateMark)
 
 ########
 # Dump
